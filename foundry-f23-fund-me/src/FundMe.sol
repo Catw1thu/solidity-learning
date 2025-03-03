@@ -12,8 +12,8 @@ contract FundMe {
         s_priceFeed = AggregatorV3Interface(priceFeed);
     }
     uint constant MINIMUM_USD = 1;
-    address[] public funders;
-    mapping(address => uint) public addressToAmountFunded;
+    address[] private s_funders;
+    mapping(address => uint) private s_addressToAmountFunded;
 
     error NotOwner();
     modifier onlyOwner() {
@@ -28,25 +28,34 @@ contract FundMe {
             msg.value.getConversionRate(s_priceFeed) >= MINIMUM_USD * 1e17,
             "Didn't send enough ETH"
         );
-        funders.push(msg.sender);
-        addressToAmountFunded[msg.sender] += msg.value.getConversionRate(
-            s_priceFeed
-        );
+        s_funders.push(msg.sender);
+        s_addressToAmountFunded[msg.sender] += msg.value;
     }
     function withdraw() public onlyOwner {
         (bool success, ) = payable(msg.sender).call{
             value: address(this).balance
         }("");
         require(success, "Call failed");
-        for (uint i = 0; i < funders.length; i++) {
-            address funderAddress = funders[i];
-            addressToAmountFunded[funderAddress] = 0;
+        for (uint i = 0; i < s_funders.length; i++) {
+            address funderAddress = s_funders[i];
+            s_addressToAmountFunded[funderAddress] = 0;
         }
-        funders = new address[](0);
+        s_funders = new address[](0);
     }
     function getVersion() public view returns (uint) {
         return AggregatorV3Interface(s_priceFeed).version();
     }
+
+    function getAddressToAmountFunded(
+        address funderAddress
+    ) public view returns (uint) {
+        return s_addressToAmountFunded[funderAddress];
+    }
+
+    function getFunder(uint index) public view returns (address) {
+        return s_funders[index];
+    }
+
     receive() external payable {
         fund();
     }
