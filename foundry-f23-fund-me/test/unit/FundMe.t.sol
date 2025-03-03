@@ -1,10 +1,11 @@
 // // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
-import {Test} from "forge-std/Test.sol";
-import {FundMe} from "../src/FundMe.sol";
-import {FundMeScript} from "../script/FundMe.s.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {FundMe} from "../../src/FundMe.sol";
+import {FundMeScript} from "../../script/FundMe.s.sol";
 
 contract FundMeTest is Test {
+    uint256 constant GAS_PRICE = 1;
     FundMe public fundMe;
     function setUp() public {
         FundMeScript fundMeScript = new FundMeScript();
@@ -32,15 +33,21 @@ contract FundMeTest is Test {
     }
 
     function test_WithdrawFromSingleFunder() public {
+        vm.txGasPrice(GAS_PRICE);
         vm.deal(user1, INITIAL_BALANCE);
         vm.startPrank(user1);
         fundMe.fund{value: SEND_VALUE}();
         vm.stopPrank();
         uint256 startingFundMeBalance = address(fundMe).balance;
         uint256 startingOwnerBalance = fundMe.i_owner().balance;
+        uint256 gasStart = gasleft();
+
         vm.startPrank(fundMe.i_owner());
         fundMe.withdraw();
         vm.stopPrank();
+
+        console.log("gas used: ", (gasStart - gasleft()) * tx.gasprice);
+
         assertEq(address(fundMe).balance, 0);
         assertEq(
             fundMe.i_owner().balance,
